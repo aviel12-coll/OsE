@@ -1,0 +1,37 @@
+(gdb) (gdb) Breakpoint 1 at 0x260e: file uthreads.cpp, line 121.
+(gdb) Breakpoint 2 at 0x2c42: file uthreads.cpp, line 254.
+(gdb) Starting program: /tmp/test_3_self_preemption_debug 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, init_thread_context (thread=0x555555577910) at uthreads.cpp:121
+121	    address_t sp = (address_t) thread->stack + STACK_SIZE - sizeof(address_t);
+(gdb) $1 = 1
+(gdb) $2 = 0x555555577a00 ""
+(gdb) $3 = 93824992377344
+(gdb) No symbol "STACK_SIZE" in current context.
+(gdb) $4 = 93824992377104
+(gdb) No symbol "JB_SP" in current context.
+(gdb) No symbol "JB_PC" in current context.
+(gdb) Continuing.
+
+Breakpoint 1, init_thread_context (thread=0x555555578a50) at uthreads.cpp:121
+121	    address_t sp = (address_t) thread->stack + STACK_SIZE - sizeof(address_t);
+(gdb) $5 = 0
+(gdb) No symbol "next_thread" in current context.
+(gdb) No symbol "next_thread" in current context.
+(gdb) No symbol "next_thread" in current context.
+(gdb) No symbol "next_thread" in current context.
+(gdb) No symbol "next_thread" in current context.
+(gdb) No symbol "next_thread" in current context.
+(gdb) Continuing.
+
+Breakpoint 2, switch_to_next_thread () at uthreads.cpp:254
+254	    if (ready_threads.empty()) {
+(gdb) 
+quit
+A debugging session is active.
+
+	Inferior 1 [process 4736] will be killed.
+
+Quit anyway? (y or n) [answered Y; input not from terminal]
