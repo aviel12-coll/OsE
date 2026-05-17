@@ -73,6 +73,7 @@ int reset_timer();
 void stub_func();
 
 Thread* running_thread = nullptr;
+Thread* pending_delete = nullptr;
 std::deque<Thread*> ready_threads;
 std::map<int, Thread*> all_threads;
 std::map<int, Thread*> sleeping_threads; // tid -> quantums until wake up
@@ -107,6 +108,10 @@ address_t translate_address(address_t addr) {
 
   static void switch_to_next_thread(ThreadState target) {
     block_signals();
+    if (pending_delete != nullptr) {
+        delete pending_delete;
+        pending_delete = nullptr;
+    }
     int ret_val = sigsetjmp(running_thread->env, 0);
     
     if (ret_val != 0) {
@@ -151,14 +156,15 @@ void timer_handler(int sig)
         Thread* thread = it->second;
         thread->quantums_until_wake_up--;
         if (thread->quantums_until_wake_up <= 0) {
-        
+
             if (thread->is_blocked_by_user == false) {
                 thread->state = READY;
                 ready_threads.push_back(thread);
             }
-            it = sleeping_threads.erase(it); // Remove from sleeping threads
-        } 
+            it = sleeping_threads.erase(it);
+        } else {
             ++it;
+        }
     }
     switch_to_next_thread(READY);
     
@@ -224,6 +230,7 @@ int uthread_init(int quantum_usecs) {
 
 // Wrapper function that calls entry_point and terminates the thread
 void stub_func() {
+    unblock_signals();
     running_thread->entry_point();
     uthread_terminate(uthread_get_tid());
 }
@@ -277,7 +284,9 @@ int uthread_terminate(int tid){
 
     if (tid == 0) {
         for (auto& pair : all_threads) {
-            delete pair.second;
+            if (pair.second != running_thread) {
+                delete pair.second;
+            }
         }
         all_threads.clear();
         ready_threads.clear();
@@ -312,7 +321,7 @@ int uthread_terminate(int tid){
         next_thread->quantums++;
         total_quantums++;
         running_thread = next_thread;
-        delete thread_to_terminate;
+        pending_delete = thread_to_terminate;
         siglongjmp(next_thread->env, 1);
         unblock_signals();
         return 0;
@@ -357,6 +366,7 @@ int uthread_block(int tid) {
     }
     Thread *thread_to_block = all_threads[tid];
     if (thread_to_block->state == BLOCKED) {
+        thread_to_block->is_blocked_by_user=true;
         return 0;
     }
     if (running_thread->tid == tid) {
@@ -366,6 +376,7 @@ int uthread_block(int tid) {
         
     } else if (thread_to_block->state == READY) {
         thread_to_block->state = BLOCKED;
+        thread_to_block->is_blocked_by_user= true;
         ready_threads.erase(std::remove(ready_threads.begin(), ready_threads.end(), thread_to_block), ready_threads.end());
         
     }
@@ -389,8 +400,15 @@ int uthread_resume(int tid) {
     }
     Thread *thread_to_resume = all_threads[tid];
     if (thread_to_resume->state == BLOCKED) {
+        
+        thread_to_resume->is_blocked_by_user = false;
+
+        if (sleeping_threads.find(tid) != sleeping_threads.end()) {
+            return 0;
+        }
         thread_to_resume->state = READY;
         ready_threads.push_back(thread_to_resume);
+     
     }
     return 0;
 }
@@ -427,6 +445,11 @@ int uthread_sleep(int num_quantums) {
         std::cerr << "thread library error: main thread cannot sleep for more than 0 quantums" << std::endl;
         unblock_signals();
         return -1;
+    }
+    if (num_quantums == 0) {
+        switch_to_next_thread(READY);
+        unblock_signals();
+        return 0;
     }
     running_thread->quantums_until_wake_up = num_quantums;
     sleeping_threads[running_thread->tid] = running_thread;
