@@ -56,6 +56,10 @@ public:
 	OutputVec getOutput(void);
 
 	void setstage(MapReduceStage stage);
+	void runThread(int thread_id);
+	void shuffle(void);
+	void reducePhase(void);
+	bool are_keys_equal(const std::shared_ptr<K2> &key1, const std::shared_ptr<K2> &key2);
 
 private:
 	/*
@@ -65,6 +69,13 @@ std::atomic<uint64_t> job_stage;
 std::atomic<int> count;
 std::barrier<> map_barrier;
 std::vector<std::thread> threads;
+std::mutex reduce_mutex;
+OutputVec ouputVec;
+size_t reduce_index;
+
+
+std::vector<IntermediateVec> intermediateVectors; // one vector for each thread to store the intermediate pairs
+IntermediateVec mergedIntermediatePairs;
 
 const MapReduceClient &Myclient;
 const InputVec &MyinputVec;
