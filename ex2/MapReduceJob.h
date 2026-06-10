@@ -1,6 +1,10 @@
 #ifndef MAP_REDUCE_JOB_H
 #define MAP_REDUCE_JOB_H
 
+#include <atomic>
+#include <cstdint>
+#include <barrier>
+
 #include "MapReduceClient.h"
 // you can add other includes here
 
@@ -14,6 +18,8 @@ enum MapReduceStage
 
 class MapReduceState
 {
+private:
+	
 public:
 	MapReduceStage stage;
 	double percentage;
@@ -31,6 +37,7 @@ public:
 
 class MapReduceJob
 {
+
 public:
 	/*
 	You CAN NOT change or add properties to this part (public API).
@@ -48,14 +55,21 @@ public:
 
 	OutputVec getOutput(void);
 
+	void setstage(MapReduceStage stage);
+
 private:
 	/*
 		You can change everything on this part (these are just recommendations)
 	*/
+std::atomic<uint64_t> job_stage;
+std::atomic<int> count;
+std::barrier<> map_barrier;
+std::vector<std::thread> threads;
+
 const MapReduceClient &Myclient;
-	const InputVec &MyinputVec;
-	const int &MymultiThreadLevel;
-	std::atomic<int> count;
+const InputVec &MyinputVec;
+const int &MymultiThreadLevel;
+
 
 	// you can add other properties here
 
