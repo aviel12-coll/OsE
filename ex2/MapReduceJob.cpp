@@ -92,8 +92,12 @@ void MapReduceJob::wait(void)
 {
     for (int i = 0; i < MymultiThreadLevel; i++)
     {
-        threads[i].join();
+        if (threads[i].joinable())
+        {
+            threads[i].join();
+        }
     }
+    threads.clear();
 }
 
 OutputVec MapReduceJob::getOutput(void)
@@ -126,6 +130,13 @@ void MapReduceJob::runThread(int thread_id)
     IntermediateVec local_intermediatePairs;
 
     MapContext map_context(&local_intermediatePairs);
+
+    while (true)
+    {
+        int idx = count.fetch_add(1);
+        if (idx >= (int)MyinputVec.size()) break;
+        Myclient.map(MyinputVec[idx].first, MyinputVec[idx].second, map_context);
+    }
 
     //sort phase
     std::sort(local_intermediatePairs.begin(), local_intermediatePairs.end());
