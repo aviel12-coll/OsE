@@ -12,7 +12,7 @@ public:
     /*
     You must keep and implement this function:
     */
-   MapContext(IntermediateVec * intermediatePairs): intermediatePairs(intermediatePairs) {}
+   MapContext(IntermediateVec * intermediatePairs);
     void addIntermediate(std::shared_ptr<K2> key, std::shared_ptr<V2> value);
 
     /*
