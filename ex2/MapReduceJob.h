@@ -55,7 +55,7 @@ public:
 
 	OutputVec getOutput(void);
 
-	void setstage(MapReduceStage stage);
+	void setstage(MapReduceStage stage, uint64_t total_elements);
 	void runThread(int thread_id);
 	void shuffle(void);
 	void reducePhase(void);
@@ -79,7 +79,7 @@ IntermediateVec mergedIntermediatePairs;
 
 const MapReduceClient &Myclient;
 const InputVec &MyinputVec;
-const int &MymultiThreadLevel;
+const int MymultiThreadLevel;
 
 
 	// you can add other properties here
