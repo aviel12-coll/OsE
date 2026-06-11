@@ -4,6 +4,9 @@
 #include <atomic>
 #include <cstdint>
 #include <barrier>
+#include <thread>
+#include <vector>
+#include <mutex>
 
 #include "MapReduceClient.h"
 // you can add other includes here
