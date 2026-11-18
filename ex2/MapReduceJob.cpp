@@ -18,8 +18,8 @@ Implement:
 
 
 MapReduceJob::MapReduceJob(const MapReduceClient &client, const InputVec &inputVec, int multiThreadLevel):
-    Myclient(client), MyinputVec(inputVec), MymultiThreadLevel(multiThreadLevel), count(0), map_barrier(multiThreadLevel)
-    , ouputVec(), reduce_mutex(), reduce_index(0)
+    count(0), map_barrier(multiThreadLevel), reduce_index(0),
+    Myclient(client), MyinputVec(inputVec), MymultiThreadLevel(multiThreadLevel)
 {
     intermediateVectors.resize(multiThreadLevel);
     for (int i = 0; i < MymultiThreadLevel; i++)
@@ -49,7 +49,7 @@ MapReduceState MapReduceJob::getState(void) const
 
         if (total == 0)
         {
-            state.percentage = 0.0;
+            state.percentage = (stage_value == REDUCE_STAGE) ? 100.0 : 0.0;
         }
         else
         {
@@ -60,6 +60,10 @@ MapReduceState MapReduceJob::getState(void) const
 
 }
 
+
+// set the current stage value in job_stage to the given stage and total number of elements
+//we will use the two last bits of job_stage to store the stage value and the 31 bits of job_stage to store 
+//the total number of elements
 void MapReduceJob::setstage(MapReduceStage stage, uint64_t total_elements) 
 {
     uint64_t stage_value = static_cast<uint64_t>(stage);
@@ -72,9 +76,11 @@ void MapReduceJob::setstage(MapReduceStage stage, uint64_t total_elements)
 
 
 // the role of this function is to wait for all the threads to finish their work and then join them
-// join just stop the main thread until the thread that is being joined is finished and then it continues to the next line of code
+// join just stop the main thread until the thread that is being joined is finished and then it continues to
+// the next line of code
 void MapReduceJob::wait(void)
 {
+    std::lock_guard<std::mutex> lock(wait_mutex);
     for (auto& t : threads)
     {
         if (t.joinable())
@@ -86,6 +92,10 @@ void MapReduceJob::wait(void)
 OutputVec MapReduceJob::getOutput(void)
 {
     wait();
+    std::sort(ouputVec.begin(), ouputVec.end(),
+        [](const OutputPair& a, const OutputPair& b) {
+            return *(a.first) < *(b.first);
+        });
     return this->ouputVec;
 }
 
@@ -96,7 +106,8 @@ bool MapReduceJob::isDone(void) const
     uint64_t total = (val >> 31) & 0x7FFFFFFF;
     uint64_t processed = val & 0x7FFFFFFF;
 
-    return (total>0 && processed == total);
+    uint64_t stage_value = (val >> 62) & 0x3;
+    return (stage_value == REDUCE_STAGE) && (total == 0 || processed == total);
 
 }
 
@@ -115,11 +126,8 @@ void MapReduceJob::runThread(int thread_id)
            setstage(MAP_STAGE, MyinputVec.size());
 
     }
-    map_barrier.arrive_and_wait();
-
-
-    IntermediateVec local_intermediatePairs;
-
+    //wait for thread 0 to set the stage and total elements before starting the map phase
+    map_barrier.arrive_and_wait();  
     MapContext map_context(&intermediateVectors[thread_id]);
 
     while (true)
@@ -130,6 +138,7 @@ void MapReduceJob::runThread(int thread_id)
     }
 
     //sort phase
+    // every thread sorts its own intermediate vector by key using the < operator of K2
     std::sort( intermediateVectors[thread_id].begin() , intermediateVectors[thread_id].end(),
     [](const IntermediatePair& a, const IntermediatePair& b) {
         return *(a.first) < *(b.first);
@@ -140,6 +149,10 @@ void MapReduceJob::runThread(int thread_id)
 
     if (thread_id == 0)
     {
+        size_t total_intermediate = 0;
+        for (auto& v : intermediateVectors) total_intermediate += v.size();
+        setstage(SHUFFLE_STAGE, total_intermediate);
+
         shuffle();
         setstage(REDUCE_STAGE, mergedIntermediatePairs.size());
     }
@@ -174,13 +187,16 @@ void MapReduceJob::reducePhase(void)
     {
         IntermediateVec group;
         {
+            // lock the reduce_mutex for avoiding 2 threads to access the mergedIntermediatePairs vector at 
+            //the same time
             std::lock_guard<std::mutex> lock(reduce_mutex);
 
             if (reduce_index >= mergedIntermediatePairs.size())
                 break;
 
             auto current_key = mergedIntermediatePairs[reduce_index].first;
-            while (reduce_index < mergedIntermediatePairs.size() && are_keys_equal(mergedIntermediatePairs[reduce_index].first, current_key))
+            while (reduce_index < mergedIntermediatePairs.size() && 
+            are_keys_equal(mergedIntermediatePairs[reduce_index].first, current_key))
             {
                 group.push_back(mergedIntermediatePairs[reduce_index]);
                 reduce_index++;

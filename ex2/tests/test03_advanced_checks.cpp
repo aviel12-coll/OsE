@@ -81,6 +81,9 @@ int main()
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
+    assert(saw_mapping  && "never observed MAP_STAGE in progress");
+    assert(saw_reducing && "never observed REDUCE_STAGE in progress");
+
     std::cout << "[TEST] Testing job.wait()..." << std::endl;
     job.wait();
 

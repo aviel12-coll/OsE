@@ -73,6 +73,7 @@ std::atomic<int> count;
 std::barrier<> map_barrier;
 std::vector<std::thread> threads;
 std::mutex reduce_mutex;
+std::mutex wait_mutex;
 OutputVec ouputVec;
 size_t reduce_index;
 
