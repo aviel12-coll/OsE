@@ -3,7 +3,6 @@
 !/ex1/*.*
 !/ex1/*/
 !/ex1/Makefile
-!/ex1/README
 /ex1/test/*
 !/ex1/test/*.*
 /ex2/tests/*
@@ -35,3 +34,7 @@ Thumbs.db
 # Debug scratch
 gdb.txt
 temp.cpp
+
+# Course submission files (contain student IDs)
+/ex1/README
+/ex2/README
