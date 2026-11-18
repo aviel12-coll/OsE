@@ -1,0 +1,37 @@
+# Build artifacts
+*.o
+*.a
+*.out
+*.exe
+build/
+
+# Compiled binaries (files without an extension) in program/test folders
+/ex1/*
+!/ex1/*.*
+!/ex1/*/
+!/ex1/Makefile
+!/ex1/README
+/ex1/test/*
+!/ex1/test/*.*
+/ex2/tests/*
+!/ex2/tests/*.*
+!/ex2/tests/*/
+/ex2/SampleClient
+/ex2/tests/results.txt
+/ex3/**/tests/*
+!/ex3/**/tests/*.*
+
+# Archives (submissions, downloaded course resources)
+*.zip
+
+# Downloaded duplicate of the course tests
+/ex2/tests/tests (1)/
+
+# Windows / editor junk
+*Zone.Identifier
+Thumbs.db
+.DS_Store
+
+# Debug scratch
+gdb.txt
+temp.cpp
